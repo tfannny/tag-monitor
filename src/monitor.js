@@ -1,17 +1,14 @@
-const fs = require("fs");
 /**
  * 监控主程序入口
  */
+const fs = require("fs");
 const path = require("path");
 const { fetchNotices } = require("./fetcher");
-const { sendNoticeEmail } = require("./mailer");
+const { sendNoticeEmail, hasSmtpConfig } = require("./mailer");
 
 const DATA_DIR = path.resolve(__dirname, "../data");
 const HISTORY_FILE = path.join(DATA_DIR, "notices.json");
 
-/**
- * 读取本地历史公告
- */
 function readHistory() {
   if (!fs.existsSync(HISTORY_FILE)) {
     return [];
@@ -25,9 +22,6 @@ function readHistory() {
   }
 }
 
-/**
- * 写入最新公告至本地持久化文件
- */
 function writeHistory(notices) {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -35,9 +29,6 @@ function writeHistory(notices) {
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(notices, null, 2), "utf-8");
 }
 
-/**
- * 比较新旧公告，找出新增或内容更新项
- */
 function diffNotices(latestNotices, oldNotices) {
   const oldMap = new Map();
   for (const item of oldNotices) {
@@ -48,13 +39,11 @@ function diffNotices(latestNotices, oldNotices) {
   for (const item of latestNotices) {
     const old = oldMap.get(String(item.id));
     if (!old) {
-      // 全新发布的公告
       changed.push({
         ...item,
         isUpdate: false
       });
     } else if (item.contentHash && old.contentHash && item.contentHash !== old.contentHash) {
-      // 标题相同但正文内容有更新的公告
       changed.push({
         ...item,
         isUpdate: true
@@ -81,12 +70,11 @@ async function main() {
     console.log("检测到首次运行，正在建立历史基线数据...");
     writeHistory(notices);
 
-    // 如果指定了首次运行也推送最新一条
     if (process.env.FIRST_RUN_NOTIFY === "true" && notices.length > 0) {
-      console.log("FIRST_RUN_NOTIFY=true，正在推送最新一条公告测试连通性...");
+      console.log("FIRST_RUN_NOTIFY=true，正在发送测试通知邮件...");
       await sendNoticeEmail([notices[0]], appUrl);
     } else {
-      console.log("已保存基线公告数据，后续出现新公告或内容变更时将自动发送邮件通知。");
+      console.log("已保存基线公告数据，后续出现新公告或内容变更时将触发通知。");
     }
     return;
   }
@@ -94,12 +82,12 @@ async function main() {
   const changedNotices = diffNotices(notices, history);
 
   if (changedNotices.length === 0) {
-    console.log("今日监测完成：未发现新增或修改的公告。");
+    console.log("今日检测完成：未发现新增或修改的公告。");
     writeHistory(notices);
     return;
   }
 
-  console.log(`🎉 发现 ${changedNotices.length} 条公告更新！`);
+  console.log(`检测到 ${changedNotices.length} 条公告更新：`);
   changedNotices.forEach(n => {
     const tag = n.isUpdate ? "[内容更新]" : "[全新发布]";
     console.log(`- ${tag} [${n.date || "最新"}] ${n.title} (${n.url})`);
@@ -110,10 +98,10 @@ async function main() {
 
   // 4. 持久化存储
   writeHistory(notices);
-  console.log("历史数据已更新，监控任务顺利完成。");
+  console.log("历史数据已更新，监控任务完成。");
 }
 
 main().catch(err => {
-  console.error("❌ 任务执行出错:", err);
+  console.error("任务执行出错:", err);
   process.exit(1);
 });
