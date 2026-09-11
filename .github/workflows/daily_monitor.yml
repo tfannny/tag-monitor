@@ -1,0 +1,47 @@
+name: Daily TAG Notice Monitor
+
+on:
+  schedule:
+    # 每天北京时间早上 09:00 (UTC 01:00) 定时执行
+    - cron: "0 1 * * *"
+  workflow_dispatch: # 支持在 GitHub Actions 页面点击 "Run workflow" 手动执行测试
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Notice Monitor
+        env:
+          TAG_TOKEN: ${{ secrets.TAG_TOKEN }}
+          TAG_EMAIL: ${{ secrets.TAG_EMAIL }}
+          TAG_PASSWORD: ${{ secrets.TAG_PASSWORD }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+          FIRST_RUN_NOTIFY: ${{ secrets.FIRST_RUN_NOTIFY }}
+        run: node src/monitor.js
+
+      - name: Commit & Push Notice Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/notices.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update notices data [skip ci]" && git push)

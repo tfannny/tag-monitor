@@ -1,0 +1,12 @@
+{
+  "name": "tag-notice-monitor",
+  "version": "1.0.0",
+  "description": "Daily TAG notice monitor on GitHub Actions with email alerts",
+  "main": "src/monitor.js",
+  "scripts": {
+    "start": "node src/monitor.js"
+  },
+  "dependencies": {
+    "nodemailer": "^6.10.1"
+  }
+}
