@@ -1,6 +1,6 @@
 # TAG公告监控系统
 
-基于GitHub Actions实现的TAG官网公告定时采集与邮件提醒工具。
+运行在GitHub Actions实现的TAG官网公告定时采集与邮件提醒工具。
 
 ## 工作原理
 
