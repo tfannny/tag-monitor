@@ -1,3 +1,4 @@
+const fs = require("fs");
 /**
  * 监控主程序入口
  */
@@ -35,12 +36,33 @@ function writeHistory(notices) {
 }
 
 /**
- * 比较新旧公告，找出新增项
+ * 比较新旧公告，找出新增或内容更新项
  */
 function diffNotices(latestNotices, oldNotices) {
-  const oldIds = new Set(oldNotices.map(n => String(n.id || n.title)));
-  const newNotices = latestNotices.filter(n => !oldIds.has(String(n.id || n.title)));
-  return newNotices;
+  const oldMap = new Map();
+  for (const item of oldNotices) {
+    oldMap.set(String(item.id), item);
+  }
+
+  const changed = [];
+  for (const item of latestNotices) {
+    const old = oldMap.get(String(item.id));
+    if (!old) {
+      // 全新发布的公告
+      changed.push({
+        ...item,
+        isUpdate: false
+      });
+    } else if (item.contentHash && old.contentHash && item.contentHash !== old.contentHash) {
+      // 标题相同但正文内容有更新的公告
+      changed.push({
+        ...item,
+        isUpdate: true
+      });
+    }
+  }
+
+  return changed;
 }
 
 async function main() {
@@ -48,13 +70,8 @@ async function main() {
   console.log(`[TAG Monitor] 开始运行: ${new Date().toISOString()}`);
   console.log("=========================================");
 
-  const token = process.env.TAG_TOKEN;
-  const email = process.env.TAG_EMAIL;
-  const password = process.env.TAG_PASSWORD;
-
   // 1. 获取最新公告列表及最新跳转域名
-  const { appUrl, notices } = await fetchNotices({ token, email, password });
-  console.log(`成功抓取到 ${notices.length} 条公告数据`);
+  const { appUrl, notices } = await fetchNotices();
 
   // 2. 比对历史数据
   const history = readHistory();
@@ -66,28 +83,30 @@ async function main() {
 
     // 如果指定了首次运行也推送最新一条
     if (process.env.FIRST_RUN_NOTIFY === "true" && notices.length > 0) {
-      console.log("FIRST_RUN_NOTIFY=true，将推送最新一条公告测试...");
+      console.log("FIRST_RUN_NOTIFY=true，正在推送最新一条公告测试连通性...");
       await sendNoticeEmail([notices[0]], appUrl);
     } else {
-      console.log("已保存基线公告数据，后续出现新公告时将自动发送邮件通知。");
+      console.log("已保存基线公告数据，后续出现新公告或内容变更时将自动发送邮件通知。");
     }
     return;
   }
 
-  const newNotices = diffNotices(notices, history);
+  const changedNotices = diffNotices(notices, history);
 
-  if (newNotices.length === 0) {
-    console.log("今日监测完成：未发现新增公告。");
-    // 更新历史记录顺序或内容微调
+  if (changedNotices.length === 0) {
+    console.log("今日监测完成：未发现新增或修改的公告。");
     writeHistory(notices);
     return;
   }
 
-  console.log(`🎉 发现 ${newNotices.length} 条全新公告！`);
-  newNotices.forEach(n => console.log(`- [${n.created_at || "New"}] ${n.title}`));
+  console.log(`🎉 发现 ${changedNotices.length} 条公告更新！`);
+  changedNotices.forEach(n => {
+    const tag = n.isUpdate ? "[内容更新]" : "[全新发布]";
+    console.log(`- ${tag} [${n.date || "最新"}] ${n.title} (${n.url})`);
+  });
 
   // 3. 发送邮件通知
-  await sendNoticeEmail(newNotices, appUrl);
+  await sendNoticeEmail(changedNotices, appUrl);
 
   // 4. 持久化存储
   writeHistory(notices);
