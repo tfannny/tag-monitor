@@ -5,16 +5,7 @@
     "url": "https://note.boccc.co/index.php/archives/198.html",
     "date": "2026-08-30",
     "created_at": 1788022860,
-    "content": "<h1><a href=\"https://note.boccc.co/\">运维日志</a></h1>\n    <p>\n        <i>\n            <time datetime=\"2026-08-30T01:01:00+08:00\">\n                2026-08-30 01:01            </time>\n            · \n        </i>\n        <a href=\"https://note.boccc.co/index.php/category/default/\">最新公告</a>    </p>\n    <article>\n            <p>2026 / 09 / 13  11:00-13:00<br>香港01、02、03 进行计划升级，提高晚高峰性能，期间可能会有短暂中断情况</p><p>2026 / 09 / 12<br>为了满足用户对于21、22端口（ftp、ssh、git）等工具加速需求，现在已经支持添加IP/域名白名单功能<br>在您官网-&gt;个人中心-&gt;白名单添加后，10分钟内将会下发到各节点，香港、日本节点将放开白名单内ip的冷门端口21/22访问。<br>此功能仅对 Bronze,Silver,Gold,Team 开放，未来我们将放开更多非标端口的白名单访问机制</p>        </article>\n    <p class=\"tags\">\n             </p>",
-    "contentHash": "f18db5439a20e9ce004d93ea8cbd78b1"
-  },
-  {
-    "id": "159",
-    "title": "🔴历史公告",
-    "url": "https://note.boccc.co/index.php/archives/159.html",
-    "date": "2026-08-01",
-    "created_at": 1785560100,
-    "content": "<h1><a href=\"https://note.boccc.co/\">🔴历史公告</a></h1>\n    <p>\n        <i>\n            <time datetime=\"2026-08-01T12:55:00+08:00\">\n                2026-08-01 12:55            </time>\n            · \n        </i>\n        <a href=\"https://note.boccc.co/index.php/category/default/\">最新公告</a>    </p>\n    <article>\n            <h2>站点更新</h2><p>官网客服系统已经支持传图，并且对接到技术和总监界面，现在会有更多人进行解答。但是主要问题推荐还是右下角在线客服。</p><p>我们预计将在九月提供:</p><ul><li>自定义订阅系统（过滤节点，自定义模板，规则等） 【即将上线】</li><li>更稳健的私有客户端</li></ul><p>我们预计将在未来提供:</p><ul><li>提供更好的路由器方案</li><li>提供支持22和特殊端口的实验性节点，最大限度避免abuse。</li><li>实验性协议，和线路优化（画大饼）</li></ul><p>已上线</p><ul><li>谷峰倍率（IDC节点谷时倍率0.6，峰不变）</li></ul><p>2026年8月 19日 00:00</p><p>官网面板已优化和升级，部分 ui 进行了改动,流量详情已经重构算法，可视视图升级到 31 天，未来可能视情况和负载扩容到 90 天。<br>您目前可以查看最近 31 天，粒度为 5 分钟的使用视图。<br><strong>由于刚扩容的情况，从 8.1 之前的流量记录是看不到的。</strong><br>2026年8月 14日 13:00</p><h2>后续新定制产品Mac mini需求投票，大家可以看看有没有需求</h2><p><a href=\"https://forms.gle/WYQAGbqauP61G584A\">投票链接</a></p><p>2026年8月18日 16:14:30</p><h2>软件修复</h2><p>客户端 3.0 正在开发中，将大幅优化操作难度，并且可以无需输入密码登录，自定义规则和偏好等。<br>2026年8月 14日 12:34</p><p>客户端都已修复登录问题<br>无法登录的客户请在教程里面下载新版本</p><p>已在使用的客户，会在客户端内收到更新推送提示<br>请各位尽快更新！</p><p>如果已经更新到最新版本还是提示验证码确实，可以按照以下操作解决</p><p>1.卸载当前版本<br>2.重启电脑<br>3.再次安装最新版本</p><p>2026年8月1日 22:24:42</p><hr>        </article>\n    <p class=\"tags\">\n             </p>",
-    "contentHash": "5f29b4b61c6b0148cce33c320f04905b"
+    "content": "<h1><a href=\"https://note.boccc.co/\">运维日志</a></h1>\n    <p>\n        <i>\n            <time datetime=\"2026-08-30T01:01:00+08:00\">\n                2026-08-30 01:01            </time>\n            · \n        </i>\n        <a href=\"https://note.boccc.co/index.php/category/default/\">最新公告</a>    </p>\n    <article>\n            <p>公告现已迁移至官网，登录官网即可查看最新公告弹窗</p>        </article>\n    <p class=\"tags\">\n             </p>",
+    "contentHash": "3038d3ec77232c69179a1f0a76d495b0"
   }
 ]
