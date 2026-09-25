@@ -34,6 +34,10 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
           FIRST_RUN_NOTIFY: ${{ secrets.FIRST_RUN_NOTIFY }}
+          TAG_TOKEN: ${{ secrets.TAG_TOKEN }}
+          TAG_EMAIL: ${{ secrets.TAG_EMAIL }}
+          TAG_PASSWORD: ${{ secrets.TAG_PASSWORD }}
+          TAG_API_BASE: ${{ secrets.TAG_API_BASE }}
         run: node src/monitor.js
 
       - name: Commit and push changes

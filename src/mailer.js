@@ -36,13 +36,21 @@ function formatDate(timestamp) {
 function renderHtmlTemplate(newNotices, latestUrl) {
   const noticesHtml = newNotices.map((n, idx) => {
     const timeStr = formatDate(n.created_at || n.date);
-    const contentHtml = (n.content || "").replace(/\n/g, "<br/>");
+    const isHtml = /<[a-z][\s\S]*>/i.test(n.content || "");
+    const contentHtml = isHtml ? (n.content || "") : (n.content || "").replace(/\n/g, "<br/>");
+    const imgHtml = n.img_url ? `<div style="margin:12px 0;"><img src="${n.img_url}" style="max-width:100%;border-radius:8px;" alt="公告配图" /></div>` : "";
+    const alertBadge = n.alert ? `<span style="font-size:12px;color:#b91c1c;background:#fee2e2;padding:4px 8px;border-radius:4px;margin-right:6px;">弹窗重要</span>` : "";
+
     return `
       <div style="background:#ffffff;border-radius:8px;border:1px solid #e5e7eb;padding:20px;margin-bottom:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f3f4f6;padding-bottom:12px;margin-bottom:14px;">
           <h2 style="margin:0;font-size:18px;color:#111827;">#${idx + 1} ${n.title || "公告"}</h2>
-          <span style="font-size:12px;color:#6b7280;background:#f3f4f6;padding:4px 8px;border-radius:4px;">${timeStr}</span>
+          <div>
+            ${alertBadge}
+            <span style="font-size:12px;color:#6b7280;background:#f3f4f6;padding:4px 8px;border-radius:4px;">${timeStr}</span>
+          </div>
         </div>
+        ${imgHtml}
         <div style="font-size:14px;line-height:1.6;color:#374151;word-break:break-word;">
           ${contentHtml}
         </div>

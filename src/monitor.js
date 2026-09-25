@@ -3,6 +3,26 @@
  */
 const fs = require("fs");
 const path = require("path");
+
+// 本地运行时自动加载 .env 环境变量
+const ENV_FILE = path.resolve(__dirname, "../.env");
+if (fs.existsSync(ENV_FILE)) {
+  if (typeof process.loadEnvFile === "function") {
+    process.loadEnvFile(ENV_FILE);
+  } else {
+    fs.readFileSync(ENV_FILE, "utf-8").split("\n").forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) return;
+      const idx = trimmed.indexOf("=");
+      if (idx !== -1) {
+        const key = trimmed.slice(0, idx).trim();
+        const val = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+        if (!process.env[key]) process.env[key] = val;
+      }
+    });
+  }
+}
+
 const { fetchNotices } = require("./fetcher");
 const { sendNoticeEmail, hasSmtpConfig } = require("./mailer");
 
@@ -64,10 +84,15 @@ async function main() {
 
   // 2. 比对历史数据
   const history = readHistory();
-  const isFirstRun = history.length === 0;
+  const isLegacyHistory = history.some(n => n.url && n.url.includes("note.boccc.co"));
+  const isFirstRun = history.length === 0 || isLegacyHistory;
 
   if (isFirstRun) {
-    console.log("检测到首次运行，正在建立历史基线数据...");
+    if (isLegacyHistory) {
+      console.log("检测到历史数据来自已弃用的旧公告站 (note.boccc.co)，正在自动平滑迁移至官方最新公告基线...");
+    } else {
+      console.log("检测到首次运行，正在建立历史基线数据...");
+    }
     writeHistory(notices);
 
     if (process.env.FIRST_RUN_NOTIFY === "true" && notices.length > 0) {
