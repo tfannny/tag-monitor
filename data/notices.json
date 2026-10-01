@@ -2,14 +2,14 @@
   {
     "id": "6",
     "title": "故障通知",
-    "content": "日本家宽06、08、09 所在机房硬盘故障，今晚或者明天恢复",
+    "content": "~~日本家宽06、08、09 所在机房硬盘故障，今晚或者明天恢复~~\n\n已修复！",
     "img_url": null,
     "created_at": 1790595198,
-    "updated_at": 1790595203,
+    "updated_at": 1790788033,
     "date": "2026-09-28",
     "url": "https://user.tagss14.pro/#/notice",
-    "alert": true,
-    "contentHash": "02703a4bae9ba47df39bb6e237f53dcf"
+    "alert": false,
+    "contentHash": "e3f7ce5c11f40e0cdea507222461427c"
   },
   {
     "id": "5",
