@@ -2,14 +2,14 @@
   {
     "id": "8",
     "title": "通行密钥登录方式已试支持！",
-    "content": "现在 Silver / Gold / Team 用户可以在用户中心添加通行密钥登录。\n下次在官网登录的时候无需输入账号密码，通过 Passkey 即可一键登录. 未来 beta 结束后将会下放到其他等级",
+    "content": "现在 bronze / Silver / Gold / Team 用户可以在用户中心添加通行密钥登录。\n下次在官网登录的时候无需输入账号密码，无需验证码，通过 Passkey 即可一键登录",
     "img_url": null,
     "created_at": 1791435176,
-    "updated_at": 1791437896,
+    "updated_at": 1791519135,
     "date": "2026-10-08",
     "url": "https://user.tagss14.pro/#/notice",
     "alert": true,
-    "contentHash": "b5ea3eb56b9060666ed0ef53dcdbc4cc"
+    "contentHash": "613e3860c4a01f85b0c04be80404678e"
   },
   {
     "id": "7",
