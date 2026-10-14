@@ -24,6 +24,7 @@ git push -u origin main
 | Secret名称 | 说明 | 示例 | 必填 |
 |:---|:---|:---|:---|
 | **TAG_TOKEN** | TAG 官方登录凭证（**首选**） | `eyJhbGci...` | 是 (与账号密码二选一) |
+| **TAG_COOKIE** | Cloudflare 人机质询 Cookie（防 403 拦截） | `cf_clearance=1Q2r...` | 开启盾时建议配置 |
 | **TAG_EMAIL** | TAG 官网登录邮箱账号（备选） | `user@example.com` | 是 (未填Token时必填) |
 | **TAG_PASSWORD** | TAG 官网登录密码（备选） | `your_password` | 是 (未填Token时必填) |
 | **SMTP_HOST** | 发信 SMTP 服务器 | `smtp.qq.com` | 是 |
@@ -33,14 +34,11 @@ git push -u origin main
 | **NOTIFY_EMAIL** | 接收通知的目标邮箱 | `receiver@example.com` | 是 |
 | **FIRST_RUN_NOTIFY** | 首次运行是否发送最新公告测试邮件 | `true` 或 `false` | 否 |
 
-> **如何获取 TAG_TOKEN？**
+> **如何获取 TAG_TOKEN 与 TAG_COOKIE？**
 > 1. 用电脑浏览器登录 TAG 官网面板；
 > 2. 按 `F12`（或右键“检查”）打开开发者工具，切换到 **Console (控制台)**；
-> 3. 输入以下代码回车：
->    ```javascript
->    localStorage.getItem("token") || localStorage.getItem("tag:token")
->    ```
-> 4. 复制返回的字符串，粘贴到 `TAG_TOKEN` 即可。
+> 3. 获取 Token：输入 `localStorage.getItem("token") || localStorage.getItem("tag:token")` 回车复制输出字符串；
+> 4. 获取 Cookie（解决 403 / Cloudflare 拦截）：输入 `document.cookie` 回车，或在 **Application -> Cookies** 中复制 `cf_clearance` 的值。
 
 ### 3. 开启 Actions 读写权限
 

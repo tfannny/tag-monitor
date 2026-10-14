@@ -97,6 +97,24 @@ function hashContent(str) {
 /**
  * 格式化时间戳
  */
+const DEFAULT_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36";
+
+/**
+ * 解析并清理 Cookie
+ */
+function normalizeCookie(rawCookie) {
+  if (!rawCookie || typeof rawCookie !== "string") return null;
+  let cookie = rawCookie.trim().replace(/^["']|["']$/g, "");
+  if (!cookie || cookie === "your_cookie_here") return null;
+  if (!cookie.includes("=")) {
+    cookie = `cf_clearance=${cookie}`;
+  }
+  return cookie;
+}
+
+/**
+ * 格式化时间戳
+ */
 function formatTimestamp(ts) {
   if (!ts) return "";
   const date = typeof ts === "number" && ts < 10000000000 ? new Date(ts * 1000) : new Date(ts);
@@ -106,18 +124,32 @@ function formatTimestamp(ts) {
 /**
  * 从官方 API 获取公告列表
  */
-async function fetchOfficialNotices(token, apiBase = DEFAULT_API_BASE, appUrl = "https://tagxx.vip") {
-  const url = `${apiBase}/api/v1/user/notice/fetch?current=1`;
+async function fetchOfficialNotices(token, targetUrl = DEFAULT_API_BASE, appUrl = "https://tagxx.vip", options = {}) {
+  const url = `${targetUrl}/api/v1/user/notice/fetch?current=1`;
   console.log(`正在请求官方公告接口: ${url} ...`);
 
-  const res = await fetch(url, {
-    headers: {
-      "Authorization": token,
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-    }
-  });
+  const headers = {
+    "Authorization": token,
+    "User-Agent": DEFAULT_UA,
+    "Accept": "application/json, text/plain, */*",
+    "Referer": `${appUrl}/`
+  };
+
+  if (options.cookie) {
+    headers["Cookie"] = options.cookie;
+  }
+
+  const res = await fetch(url, { headers });
 
   if (res.status === 401 || res.status === 403) {
+    const text = await res.text().catch(() => "");
+    if (text.includes("Just a moment...") || text.includes("cf-chl-") || text.includes("cloudflare") || text.includes("cf-mitigated")) {
+      throw new Error(
+        "CLOUDFLARE_BLOCKED: 请求被 Cloudflare 人机安全质询拦截 (403 WAF)！\n" +
+        "由于官方接口启用了 Cloudflare 防护，请在 GitHub 仓库 Secrets (或 .env) 中配置 TAG_COOKIE。\n" +
+        "获取方法：登录官网后在控制台执行 document.cookie，或在 Application -> Cookies 中复制 cf_clearance 的值。"
+      );
+    }
     throw new Error("AUTH_EXPIRED: Token 认证失效或已过期 (401/403)");
   }
 
@@ -155,19 +187,23 @@ async function fetchOfficialNotices(token, apiBase = DEFAULT_API_BASE, appUrl = 
  * 获取公告（统一入口）
  */
 async function fetchNotices(options = {}) {
-  const apiBase = options.apiBase || process.env.TAG_API_BASE || DEFAULT_API_BASE;
+  const customApiBase = options.apiBase || process.env.TAG_API_BASE;
   let token = normalizeToken(options.token || process.env.TAG_TOKEN);
+  const cookie = normalizeCookie(options.cookie || process.env.TAG_COOKIE || process.env.TAG_CF_CLEARANCE);
   const email = options.email || process.env.TAG_EMAIL;
   const password = options.password || process.env.TAG_PASSWORD;
 
   // 1. 获取最新官网跳转地址
-  const { appUrl } = await getSiteConfig(apiBase);
+  const { appUrl } = await getSiteConfig(customApiBase || DEFAULT_API_BASE);
   console.log(`[动态域名追踪] 当前 TAG 最新官网地址为: ${appUrl}`);
 
-  // 2. 如果未配置 Token 但有账号密码，自动登录获取
+  // 2. 确定公告请求的 API 域名：若未手动指定 TAG_API_BASE，则优先使用动态获取到的真实官网域名 appUrl
+  const noticeApiBase = customApiBase || appUrl || DEFAULT_API_BASE;
+
+  // 3. 如果未配置 Token 但有账号密码，自动登录获取
   if (!token && email && password) {
     console.log("未检测到 TAG_TOKEN，尝试使用 TAG_EMAIL / TAG_PASSWORD 登录获取 Token...");
-    token = await loginWithCredentials(email, password, apiBase);
+    token = await loginWithCredentials(email, password, customApiBase || DEFAULT_API_BASE);
     console.log("登录成功，已自动获得有效 Token！");
   }
 
@@ -181,15 +217,22 @@ async function fetchNotices(options = {}) {
     );
   }
 
-  // 3. 请求官方公告接口 (带自动重试登录机制)
+  // 4. 请求官方公告接口 (带自动重试与备用网关机制)
   let notices;
   try {
-    notices = await fetchOfficialNotices(token, apiBase, appUrl);
+    notices = await fetchOfficialNotices(token, noticeApiBase, appUrl, { cookie });
   } catch (err) {
-    if (err.message && err.message.includes("AUTH_EXPIRED") && email && password) {
+    if (err.message && err.message.includes("CLOUDFLARE_BLOCKED") && noticeApiBase !== DEFAULT_API_BASE) {
+      console.warn("当前域名被 Cloudflare 拦截，尝试使用备用网关重试...");
+      try {
+        notices = await fetchOfficialNotices(token, DEFAULT_API_BASE, appUrl, { cookie });
+      } catch {
+        throw err;
+      }
+    } else if (err.message && err.message.includes("AUTH_EXPIRED") && email && password) {
       console.warn("当前 Token 已失效，正在尝试使用账号密码重新登录...");
-      token = await loginWithCredentials(email, password, apiBase);
-      notices = await fetchOfficialNotices(token, apiBase, appUrl);
+      token = await loginWithCredentials(email, password, customApiBase || DEFAULT_API_BASE);
+      notices = await fetchOfficialNotices(token, noticeApiBase, appUrl, { cookie });
     } else {
       throw err;
     }
