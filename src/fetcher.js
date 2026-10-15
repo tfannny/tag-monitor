@@ -9,7 +9,7 @@ const crypto = require("crypto");
  * 2. 通过 Token 或账号密码登录后获取官网最新公告 (/api/v1/user/notice/fetch)
  */
 
-const DEFAULT_API_BASE = process.env.TAG_API_BASE || "https://3lcjqnejlt8iz5iq.tagss-verification.org";
+const DEFAULT_API_BASE = process.env.TAG_API_BASE || "https://user.tagss14.pro";
 
 /**
  * 解析并清理 Token
@@ -44,20 +44,20 @@ async function getSiteConfig(apiBase = DEFAULT_API_BASE) {
     const url = `${apiBase}/api/v1/guest/comm/config`;
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-      }
+        "User-Agent": DEFAULT_UA
+      },
+      signal: AbortSignal.timeout(5000)
     });
 
     if (!res.ok) {
-      return { appUrl: "https://tagxx.vip" };
+      return { appUrl: apiBase };
     }
 
     const json = await res.json();
-    const appUrl = json?.data?.app_url || "https://tagxx.vip";
+    const appUrl = json?.data?.app_url || apiBase;
     return { appUrl, raw: json?.data };
   } catch (err) {
-    console.warn("获取动态官网地址失败，使用默认地址:", err.message);
-    return { appUrl: "https://tagxx.vip" };
+    return { appUrl: apiBase };
   }
 }
 
@@ -139,7 +139,10 @@ async function fetchOfficialNotices(token, targetUrl = DEFAULT_API_BASE, appUrl 
     headers["Cookie"] = options.cookie;
   }
 
-  const res = await fetch(url, { headers });
+  const res = await fetch(url, {
+    headers,
+    signal: AbortSignal.timeout(10000)
+  });
 
   if (res.status === 401 || res.status === 403) {
     const text = await res.text().catch(() => "");
