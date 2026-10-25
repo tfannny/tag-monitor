@@ -104,9 +104,16 @@ async function fetchWithBrowser(options = {}) {
     }
 
     // 2. 循环检测Cloudflare验证状态
+    //    只有看到真实的TAG官网页面标题("TAG Internet")才算真正通过
+    //    GitHub Actions的数据中心IP可能触发更严格的Cloudflare质询，需要更长等待
     console.log("[浏览器模式] 正在等待Cloudflare验证通过...");
     let passed = false;
-    const maxWait = 35; // 最多等待35秒
+    const maxWait = 45; // 最多等待45秒（CI环境可能更慢）
+    const CHALLENGE_TITLES = [
+      "请稍候…", "Just a moment...", "Attention Required",
+      "访问提示", "Access denied", "Checking your browser"
+    ];
+
     for (let i = 0; i < maxWait; i++) {
       await page.waitForTimeout(1000);
       let title = "";
@@ -116,25 +123,38 @@ async function fetchWithBrowser(options = {}) {
         continue;
       }
 
-      const isChallengeTitle = !title ||
-        title === "请稍候…" ||
-        title === "Just a moment..." ||
-        title.startsWith("Loading ") ||
-        title.includes("Attention Required");
+      // 严格判定：标题必须是TAG官网的真实标题
+      const isRealPage = title === "TAG Internet";
+      // 宽松判定（作为备用）：既不是空也不是已知的质询/拦截页面标题
+      const isDefinitelyChallenge = !title ||
+        CHALLENGE_TITLES.some(ct => title.includes(ct)) ||
+        title.startsWith("Loading ");
 
-      if (!isChallengeTitle) {
+      if (isRealPage) {
         console.log(`[浏览器模式] Cloudflare验证已通过！(耗时 ${i + 1}s, 页面标题: "${title}")`);
         passed = true;
         break;
       }
+
+      if (!isDefinitelyChallenge && i >= 15) {
+        // 等了超过15秒且标题不是已知拦截页面，尝试当作通过
+        console.log(`[浏览器模式] 检测到未知页面标题: "${title}"，尝试继续...`);
+        passed = true;
+        break;
+      }
+
+      if (i > 0 && i % 10 === 0) {
+        console.log(`[浏览器模式] 仍在等待Cloudflare验证... (${i}s, 当前标题: "${title}")`);
+      }
     }
 
     if (!passed) {
-      throw new Error(`Cloudflare验证等待超时(${maxWait}s)`);
+      const finalTitle = await page.title().catch(() => "unknown");
+      throw new Error(`Cloudflare验证等待超时(${maxWait}s)，最终页面标题: "${finalTitle}"`);
     }
 
-    // 等待SPA主元素加载完成，确保页面上下文稳定
-    await page.waitForTimeout(1000);
+    // 等待SPA主元素加载完成
+    await page.waitForTimeout(2000);
 
     // 3. 准备有效Token
     let activeToken = token;
@@ -156,34 +176,42 @@ async function fetchWithBrowser(options = {}) {
       console.log("[浏览器模式] 自动登录成功获取Token！");
     }
 
-    // 4. 在已通过Cloudflare质询的上下文中请求公告接口
+    // 4. 在已通过Cloudflare质询的浏览器页面内请求公告接口
+    //    使用page.evaluate内的fetch确保完整携带浏览器的Cloudflare cookie/指纹
     console.log("[浏览器模式] 正在获取最新公告...");
     const appUrl = options.apiBase || apiBase;
     const noticeApiBase = options.apiBase || appUrl || apiBase;
     const noticeUrl = `${noticeApiBase}/api/v1/user/notice/fetch?current=1`;
 
-    let noticeResult;
-    try {
-      const apiRes = await context.request.get(noticeUrl, {
-        headers: {
-          "Authorization": activeToken,
-          "Accept": "application/json, text/plain, */*",
-          "Referer": `${appUrl}/`
-        },
-        timeout: 15000
-      });
-
-      if (!apiRes.ok()) {
-        throw new Error(`HTTP ${apiRes.status()} ${apiRes.statusText()}`);
+    const noticeResult = await page.evaluate(async ({ noticeUrl, activeToken, appUrl }) => {
+      try {
+        const res = await fetch(noticeUrl, {
+          headers: {
+            "Authorization": activeToken,
+            "Accept": "application/json, text/plain, */*",
+            "Referer": `${appUrl}/`
+          }
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          const isCloudflare = text.includes("cloudflare") || text.includes("Just a moment") || text.includes("cf-chl");
+          return { error: `HTTP ${res.status}`, status: res.status, isCloudflare };
+        }
+        return { ok: true, data: await res.json() };
+      } catch (e) {
+        return { error: e.message };
       }
-      noticeResult = await apiRes.json();
-    } catch (apiErr) {
-      throw new Error(`获取公告失败: ${apiErr.message}`);
+    }, { noticeUrl, activeToken, appUrl });
+
+    if (noticeResult.error) {
+      throw new Error(`获取公告失败: ${noticeResult.error}${noticeResult.isCloudflare ? " (仍被Cloudflare拦截，浏览器可能未真正通过验证)" : ""}`);
     }
 
-    const rawList = Array.isArray(noticeResult?.data)
-      ? noticeResult.data
-      : (Array.isArray(noticeResult?.data?.data) ? noticeResult.data.data : []);
+    const apiData = noticeResult.data;
+
+    const rawList = Array.isArray(apiData?.data)
+      ? apiData.data
+      : (Array.isArray(apiData?.data?.data) ? apiData.data.data : []);
 
     const notices = rawList.map(item => {
       const id = String(item.id);
