@@ -188,6 +188,9 @@ async function fetchOfficialNotices(token, targetUrl = DEFAULT_API_BASE, appUrl 
 
 /**
  * 获取公告（统一入口）
+ *
+ * 优先使用普通fetch请求API；若被Cloudflare WAF拦截，
+ * 自动降级为Playwright浏览器模式绕过验证。
  */
 async function fetchNotices(options = {}) {
   const customApiBase = options.apiBase || process.env.TAG_API_BASE;
@@ -230,15 +233,37 @@ async function fetchNotices(options = {}) {
       try {
         notices = await fetchOfficialNotices(token, DEFAULT_API_BASE, appUrl, { cookie });
       } catch {
-        throw err;
+        // 备用网关也被拦截，降级到浏览器模式
       }
     } else if (err.message && err.message.includes("AUTH_EXPIRED") && email && password) {
       console.warn("当前 Token 已失效，正在尝试使用账号密码重新登录...");
       token = await loginWithCredentials(email, password, customApiBase || DEFAULT_API_BASE);
-      notices = await fetchOfficialNotices(token, noticeApiBase, appUrl, { cookie });
-    } else {
-      throw err;
+      try {
+        notices = await fetchOfficialNotices(token, noticeApiBase, appUrl, { cookie });
+      } catch {
+        // 重新登录后仍被拦截，降级到浏览器模式
+      }
     }
+
+    // 5. 所有普通fetch方式均失败，降级到Playwright浏览器模式
+    if (!notices && err.message && err.message.includes("CLOUDFLARE_BLOCKED")) {
+      console.warn("\n⚠️ 所有普通请求均被Cloudflare拦截，正在降级为浏览器模式...");
+      try {
+        const { fetchWithBrowser } = require("./browser-fetcher");
+        const result = await fetchWithBrowser({ token, email, password, apiBase: customApiBase });
+        console.log(`[公告抓取成功] 通过浏览器模式成功获取到 ${result.notices.length} 条官方公告`);
+        return result;
+      } catch (browserErr) {
+        console.error("[浏览器模式] 降级失败:", browserErr.message);
+        throw new Error(
+          `普通请求被Cloudflare拦截，浏览器模式也失败。\n` +
+          `原始错误: ${err.message}\n` +
+          `浏览器错误: ${browserErr.message}`
+        );
+      }
+    }
+
+    if (!notices) throw err;
   }
 
   console.log(`[公告抓取成功] 成功获取到 ${notices.length} 条官方公告`);

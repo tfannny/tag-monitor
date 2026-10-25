@@ -4,7 +4,14 @@
 const nodemailer = require("nodemailer");
 
 function hasSmtpConfig() {
-  return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!host || !user || !pass) return false;
+  if (user.includes("your_email") || pass.includes("your_smtp") || user.includes("example.com")) {
+    return false;
+  }
+  return true;
 }
 
 function createTransporter() {
